@@ -30,20 +30,20 @@ export const register = async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 8 characters" });
 
     // Email already taken?
-    const [existing] = await pool.execute(
-      "SELECT id FROM users WHERE email = ?", [email]
+    const [existing] = await pool.query(
+      "SELECT id FROM users WHERE email = $1", [email]
     );
     if (existing.length)
       return res.status(409).json({ error: "An account with this email already exists" });
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const [result] = await pool.execute(
-      "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+    const [result] = await pool.query(
+      "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING *",
       [name, email, password_hash]
     );
 
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [result.insertId]);
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = $1", [result.insertId]);
     const user = rows[0];
 
     const accessToken  = generateAccessToken(user);
@@ -69,8 +69,8 @@ export const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ error: "Email and password are required" });
 
-    const [rows] = await pool.execute(
-      "SELECT * FROM users WHERE email = ?", [email]
+    const [rows] = await pool.query(
+      "SELECT * FROM users WHERE email = $1", [email]
     );
 
     // Use the same generic error for both "not found" and "wrong password"
@@ -109,7 +109,7 @@ export const refresh = async (req, res) => {
     if (!result)
       return res.status(401).json({ error: "Session expired. Please log in again." });
 
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [result.userId]);
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = $1", [result.userId]);
     if (!rows.length)
       return res.status(401).json({ error: "User not found" });
 
@@ -137,7 +137,7 @@ export const logout = async (req, res) => {
 // ── GET CURRENT USER ──────────────────────────────────────────────────────────
 export const getMe = async (req, res) => {
   try {
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [req.user.id]);
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = $1", [req.user.id]);
     if (!rows.length)
       return res.status(404).json({ error: "User not found" });
     res.json({ user: safeUser(rows[0]) });

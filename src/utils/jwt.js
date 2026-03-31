@@ -14,8 +14,8 @@ export const generateAccessToken = (user) =>
 export const generateRefreshToken = async (userId) => {
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await pool.execute(
-    "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
+  await pool.query(
+    "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)",
     [userId, token, expiresAt]
   );
   return token;
@@ -29,18 +29,18 @@ export const verifyAccessToken = (token) => {
 
 // ── Rotate: invalidate old refresh token, issue new one ──────────────────────
 export const rotateRefreshToken = async (oldToken) => {
-  const [rows] = await pool.execute(
-    "SELECT * FROM refresh_tokens WHERE token = ? AND expires_at > NOW()",
+  const [rows] = await pool.query(
+    "SELECT * FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()",
     [oldToken]
   );
   if (!rows.length) return null;
   const { user_id } = rows[0];
-  await pool.execute("DELETE FROM refresh_tokens WHERE token = ?", [oldToken]);
+  await pool.query("DELETE FROM refresh_tokens WHERE token = $1", [oldToken]);
   const newToken = await generateRefreshToken(user_id);
   return { userId: user_id, newToken };
 };
 
 // ── Revoke all tokens for a user (logout all devices) ────────────────────────
 export const revokeAllTokens = async (userId) => {
-  await pool.execute("DELETE FROM refresh_tokens WHERE user_id = ?", [userId]);
+  await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userId]);
 };

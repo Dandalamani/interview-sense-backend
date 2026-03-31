@@ -6,8 +6,8 @@ const SALT_ROUNDS = 12;
 // ── GET PROFILE ───────────────────────────────────────────────────────────────
 export const getProfile = async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      "SELECT id, name, email, avatar, dob, bio, gender, linkedin, created_at FROM users WHERE id = ?",
+    const [rows] = await pool.query(
+      "SELECT id, name, email, avatar, dob, bio, gender, linkedin, created_at FROM users WHERE id = $1",
       [req.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
@@ -25,13 +25,13 @@ export const updateProfile = async (req, res) => {
 
     if (!name?.trim()) return res.status(400).json({ error: "Name is required" });
 
-    await pool.execute(
-      "UPDATE users SET name = ?, dob = ?, bio = ?, gender = ?, linkedin = ?, updated_at = NOW() WHERE id = ?",
+    await pool.query(
+      "UPDATE users SET name = $1, dob = $2, bio = $3, gender = $4, linkedin = $5, updated_at = NOW() WHERE id = $6",
       [name.trim(), dob || null, bio || null, gender || null, linkedin || null, req.user.id]
     );
 
-    const [rows] = await pool.execute(
-      "SELECT id, name, email, avatar, dob, bio, gender, linkedin, created_at FROM users WHERE id = ?",
+    const [rows] = await pool.query(
+      "SELECT id, name, email, avatar, dob, bio, gender, linkedin, created_at FROM users WHERE id = $1",
       [req.user.id]
     );
 
@@ -49,17 +49,17 @@ export const changeEmail = async (req, res) => {
     if (!newEmail || !password) return res.status(400).json({ error: "Email and password are required" });
 
     // Verify password
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [req.user.id]);
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = $1", [req.user.id]);
     if (!rows.length) return res.status(404).json({ error: "User not found" });
 
     const match = await bcrypt.compare(password, rows[0].password_hash);
     if (!match) return res.status(401).json({ error: "Incorrect password" });
 
     // Check new email not already taken
-    const [existing] = await pool.execute("SELECT id FROM users WHERE email = ? AND id != ?", [newEmail, req.user.id]);
+    const [existing] = await pool.query("SELECT id FROM users WHERE email = $1 AND id != $2", [newEmail, req.user.id]);
     if (existing.length) return res.status(409).json({ error: "This email is already in use" });
 
-    await pool.execute("UPDATE users SET email = ?, updated_at = NOW() WHERE id = ?", [newEmail, req.user.id]);
+    await pool.query("UPDATE users SET email = $1, updated_at = NOW() WHERE id = $2", [newEmail, req.user.id]);
     res.json({ message: "Email updated successfully" });
   } catch (err) {
     console.error("changeEmail error:", err);
@@ -74,14 +74,14 @@ export const changePassword = async (req, res) => {
     if (!currentPassword || !newPassword) return res.status(400).json({ error: "Both fields are required" });
     if (newPassword.length < 8) return res.status(400).json({ error: "New password must be at least 8 characters" });
 
-    const [rows] = await pool.execute("SELECT * FROM users WHERE id = ?", [req.user.id]);
+    const [rows] = await pool.query("SELECT * FROM users WHERE id = $1", [req.user.id]);
     if (!rows.length) return res.status(404).json({ error: "User not found" });
 
     const match = await bcrypt.compare(currentPassword, rows[0].password_hash);
     if (!match) return res.status(401).json({ error: "Current password is incorrect" });
 
     const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    await pool.execute("UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?", [hash, req.user.id]);
+    await pool.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [hash, req.user.id]);
     res.json({ message: "Password updated successfully" });
   } catch (err) {
     console.error("changePassword error:", err);
@@ -92,8 +92,8 @@ export const changePassword = async (req, res) => {
 // ── GET SESSIONS ──────────────────────────────────────────────────────────────
 export const getSessions = async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      "SELECT * FROM interview_sessions WHERE user_id = ? ORDER BY created_at DESC",
+    const [rows] = await pool.query(
+      "SELECT * FROM interview_sessions WHERE user_id = $1 ORDER BY created_at DESC",
       [req.user.id]
     );
     res.json({ sessions: rows });
@@ -108,8 +108,8 @@ export const saveSession = async (req, res) => {
   try {
     const { role, level, overall_score, tech_score, comm_score, conf_score, questions_count, weak_areas } = req.body;
 
-    const [result] = await pool.execute(
-      "INSERT INTO interview_sessions (user_id, role, level, overall_score, tech_score, comm_score, conf_score, questions_count, weak_areas) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    const [result] = await pool.query(
+      "INSERT INTO interview_sessions (user_id, role, level, overall_score, tech_score, comm_score, conf_score, questions_count, weak_areas) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [req.user.id, role, level, overall_score, tech_score, comm_score, conf_score, questions_count, JSON.stringify(weak_areas || [])]
     );
 
