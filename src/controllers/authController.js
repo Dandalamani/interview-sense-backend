@@ -69,16 +69,16 @@ export const login = async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ error: "Email and password are required" });
 
-    const [rows] = await pool.query(
+    const [result] = await pool.query(
       "SELECT * FROM users WHERE email = $1", [email]
     );
 
     // Use the same generic error for both "not found" and "wrong password"
     // so attackers can't enumerate which emails are registered
-    if (!rows.length)
+    if (!result.length)
       return res.status(401).json({ error: "Invalid email or password" });
 
-    const user = rows[0];
+    const user = result[0];
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match)
       return res.status(401).json({ error: "Invalid email or password" });
