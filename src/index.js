@@ -9,7 +9,7 @@ import userRoutes from "./routes/user.js";
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: ["https://interview-sense-frontend.vercel.app" , "http://localhost:5173"], credentials: true }));
+app.use(cors({ origin: ["https://interview-sense-frontend.vercel.app" , "http://localhost:5173"], methods: ["GET", "POST", "PUT", "DELETE"],credentials: true }));
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
