@@ -44,8 +44,10 @@ export const register = async (req, res) => {
     );
 
     const rows = await pool.query("SELECT * FROM users WHERE id = $1", [result.insertId]);
-    const user = rows[0];
-
+    const user = result.rows[0];
+    if (!user) {
+  return res.status(500).json({ error: "User creation failed" });
+}
     const accessToken  = generateAccessToken(user);
     const refreshToken = await generateRefreshToken(user.id);
 
